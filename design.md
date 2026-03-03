@@ -14,7 +14,7 @@
 - **数据集 C（用于空间）：FDIC 银行总部地理信息 + 美国州界 shapefile**
   - 用 bank HQ 的州/经纬度把压力聚合到州层面，做空间可视化
 
-### 2) 关键变量定义（把“CTR/CVR”变成你题目的标签）
+### 2) 关键变量定义（把“CTR/CVR”变成题目标签）
 
 - **冲击标签（CTR 类）**
   - 定义（以 “次日异常波动” 为 `1`）：
@@ -45,7 +45,9 @@ $$
 
 > 情绪模型实现上：如果你不想依赖 API key，主线用开源金融情绪模型（如 FinBERT）或 `GDELT` 自带 `tone` 作为 fallback；写进 `README.md`，保证可复现。
 
-### 3) 两阶段模型（AuroraBid 风格的核心）
+ETF数据: 美股宽基ETF 平均报价和现实差价数据
+
+### 3) 两阶段模型
 
 - **Stage 1（CTR / Wide&Deep 思路）**：预测 \(p(\text{spike})\)
   - Baseline：Logit / XGBoost
