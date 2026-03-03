@@ -43,7 +43,7 @@ $$
   - 文章数（attention proxy）
   - “监管/政策”关键词占比（policy intensity）
 
-> 情绪模型实现上：如果你不想依赖 API key，主线用开源金融情绪模型（如 FinBERT）或 `GDELT` 自带 `tone` 作为 fallback；写进 `README.md`，保证可复现。
+> 情绪模型：如果你不想依赖 API key，主线用开源金融情绪模型（如 FinBERT）或 `GDELT` 自带 `tone` 作为 fallback；写进 `README.md`，保证可复现。
 
 ETF数据: 美股宽基ETF 平均报价和现实差价数据
 
@@ -87,7 +87,7 @@ $$
   - Recall@\(K\)：top-\(K\) 覆盖了多少真实 `spike`
   - Captured severity@\(K\)：top-\(K\) 覆盖的 `severity` 总量（更贴近“稳定监测收益”）
 
-### 5) 你要交的图和 Streamlit（最稳拿分）
+### 5) 你要交的图和 Streamlit
 
 - **静态图 1（Altair）**：某银行/ETF 的波动（RV）时间序列 + 情绪指数叠加（可选滚动均值），并标出 `spike` 日
 - **静态图 2（空间，geopandas）**：按州聚合的平均 `StressScore` 或 `spike` 发生频率（满足 spatial 要求）
