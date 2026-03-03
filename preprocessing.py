@@ -276,14 +276,8 @@ def make_static_plots(panel: pd.DataFrame) -> None:
             gdf["NAME"] = gdf["NAME"].astype(str).str.strip()
             gdf = gdf.merge(map_df[["STNAME", "StressScore"]], left_on="NAME", right_on="STNAME", how="left")
 
-            # 为了让美国本土在图中更大、更清晰，这里只画除去 AK/HI/PR 的 48 州。
-            if "STUSPS" in gdf.columns:
-                gdf_plot = gdf[~gdf["STUSPS"].isin(["AK", "HI", "PR"])].copy()
-            else:
-                gdf_plot = gdf.copy()
-
-            fig, ax = plt.subplots(figsize=(8, 5))
-            gdf_plot.plot(
+            fig, ax = plt.subplots(figsize=(12, 7))
+            gdf.plot(
                 column="StressScore",
                 ax=ax,
                 legend=True,
