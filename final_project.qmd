@@ -121,7 +121,7 @@ We quantify Q1/Q2 using a simple **time‑split experiment**:
   - FDIC‑only: lagged ROA, ΔROA, NIM, growth in assets/deposits/bank counts
   - FDIC + Sentiment: FDIC‑only features plus `sent_mean`, `sent_neg_share`, `news_count`
 
-We run `code/presentation_experiment.py`, which writes `outputs/presentation_metrics.csv`. The table below shows the resulting AUC for predicting `bad_year` and \(R^2\) for `severity`:
+We run `code/presentation_experiment.py`(`outputs/presentation_metrics.csv`). The table below shows the resulting AUC for predicting `bad_year` and \(R^2\) for `severity`:
 
 ```{python}
 import pandas as pd
@@ -144,6 +144,4 @@ The app:
   - An interactive scatter plot of sentiment vs ΔROA (state–year)
   - A time series of sentiment indices
   - A choropleth map of the selected metric by state
-
-This satisfies the course requirement of **one Streamlit app with at least one interactive/spatial visualization** and lets us communicate Q1–Q3 in a more intuitive way during the presentation.
 
