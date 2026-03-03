@@ -2,17 +2,18 @@
 
 ### 1) 数据集（满足“至少两套数据” + 空间要求）
 
-- **数据集 A：银行/ETF 市场数据（`yfinance`）**
+- **A：银行/ETF 市场数据（`yfinance`）**
   - 标的：`KRE` + 一组区域性银行（如 `ZION`, `PACW`, `WAL` 等）
   - 先用**日频**
 
-- **数据集 B：新闻/监管文本数据（`GDELT` / `NewsAPI` / `EDGAR`）**
+- **B：新闻/监管文本数据（`GDELT` / `NewsAPI` / `EDGAR`）**
   - 最推荐：`GDELT`（公开、可复现、粒度细）
   - 抓取关键词：`FDIC` / `SEC` / `Fed` / `regulation` / `bank run` / `regional bank` + `ticker/name`
   - 保留字段：时间、来源、标题/摘要/正文片段（文章级）
 
-- **数据集 C（用于空间）：FDIC 银行总部地理信息 + 美国州界 shapefile**
-- 用 bank HQ 的州/经纬度把压力聚合到州层面，做空间可视化
+- **C（用于空间）：FDIC 银行总部地理信息 + 美国州界 shapefile**
+
+用 bank HQ 的州/经纬度把压力聚合到州层面，做空间可视化
 用 FDIC/institutions CSV得到每家银行state
 银行日度压力->州日度或区间压力
 州级压力 + shapefile → 空间图
@@ -157,7 +158,7 @@ $$
       - 与 realized volatility 的时序对比，看情绪是否在波动“抬头”前就先动
   - 在 Streamlit 时间序列图里，提供直观的 “情绪领先 vs 波动” 可视化，让“更早的信号”不只停留在回归系数上。
 
-可以说明：**不仅情绪增强了预测能力，而且在更早的 horizon 上仍然有信息**。
+说明：**不仅情绪增强了预测能力，而且在更早的 horizon 上仍然有信息**。
 
 #### Q3：市场反应是否具有地理集聚？
 
