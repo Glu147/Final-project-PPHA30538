@@ -2,7 +2,7 @@
 
 ### 1) 数据集
 
-- **A：新闻/监管文本情绪数据 **
+- **A：新闻/监管文本情绪数据（原 B）**
   - 来源：`GDELT` / Kaggle 金融新闻 / `raw_partner_headlines.csv` 等
   - 观测单位：**州–年** 或 **州–季度** \((s,t)\)
   - 处理思路：将新闻根据时间戳和实体映射到州 \(s\)，在每个年份/季度 \(t\) 聚合得到：
@@ -25,12 +25,12 @@
       $$
     - 银行数量、总资产、总存款的增速，作为传统“基本面/监管压力”特征
 
-- **C（用于空间）：美国州界 shapefile + 银行总部州信息**
+- **C（空间）：美国州界 shapefile + 银行总部州信息**
   - 使用州级 shapefile（如 `cb_2024_us_state_20m`）与数据集 B 通过 `STNAME`/州缩写连接
-  - 如需更细粒度，可利用 FDIC 银行 HQ 数据中的 `state` 先在机构层面汇总到州级，再与 shapefile join
-  - 最终得到州级 \((s,t)\) 压力指标，可直接用于 choropleth 空间图
+  - 更细粒度层面,利用 FDIC 银行 HQ 数据中`state` 先在机构层面汇总到州级，再与 shapefile join
+  - 最终得到州级 \((s,t)\) 压力指标，用于 choropleth 空间图
 
-### 2) 变量（把“CTR/CVR”变成州级压力标签）
+### 2) 变量（“CTR/CVR”变成州级压力标签）
 
 - **冲击标签（CTR 类：是否进入“坏年份”）**
   - 以州 \(s\) 在年份 \(t+1\) 的 ROA 变化是否“足够差”作为二元标签：
@@ -41,7 +41,7 @@ bad\_year_{s,t+1}
 \mathbf{1}\left[\Delta ROA_{s,t+1} < q_{0.2}(\Delta ROA_s)\right]
 $$
 
-  - 其中 \(q_{0.2}(\Delta ROA_s)\) 为该州历史 ROA 变化的第 20 个百分位，用州内分位数保证不同州的标尺可比。
+  - \(q_{0.2}(\Delta ROA_s)\) 为该州历史 ROA 变化的第 20 个百分位，用州内分位数保证不同州的标尺可比。
 
 - **强度标签（CVR 类：坏年份的严重程度）**
 
@@ -53,26 +53,28 @@ $$
 
   - 若 \(\Delta ROA_{s,t+1} \ge 0\)，说明并不“变差”，则 `severity=0`；越负代表盈利恶化越严重。
 
-- **文本特征（“LLM sentiment”思想；按州–期聚合）**
+- **文本特征（“LLM sentiment”思想；州–期聚合）**
   - 对落在 \((s,t)\) 的新闻聚合得到：
     - 情绪均值、负面占比、情绪离散度（disagreement）
     - 文章数（attention proxy）
     - “监管/政策”关键词占比（policy intensity）
 
-> 情绪模型：如果不想依赖 API key，可优先使用开源金融情绪模型（如 FinBERT）或 `GDELT` 自带 `V2Tone` 作为情绪分数；在 `README.md` 中说明具体选择，保证可复现。
+> 情绪模型：如果不想依赖 API key，优先使用开源金融情绪模型（如 FinBERT）或 `GDELT` 自带 `V2Tone` 作为情绪分数
 
 ### 3) 两阶段模型
 
-- **Stage 1（CTR / Wide&Deep 思路）**：预测州级“坏年份”概率 \(p(bad\_year)\)
+- **Stage 1（CTR）**：预测州级“坏年份”概率 \(p(bad\_year)\)
   - 观测单位：州–期 \((s,t)\)，特征包括：
-    - 文本情绪特征：`sent_mean_{s,t}`, `sent_neg_share_{s,t}`, `policy_news_share_{s,t}`, `news_count_{s,t}` 等
-    - 传统财务特征：上一期的 \(ROA_{s,t}\)、\(\Delta ROA_{s,t}\)、`NIM`, 资产/存款增速、银行数量等
+    - 文本情绪特征：`sent_mean_{s,t}`, `sent_neg_share_{s,t}`, `news_count_{s,t}` 等
+    - 财务特征：上一期的 \(ROA_{s,t}\)、\(\Delta ROA_{s,t}\)、`NIM`, 资产/存款增速、银行数量等
   - 目标：\(bad\_year_{s,t+1}\)
-  - 模型：
-    - Baseline：只用 FDIC 财务特征的 Logit / XGBoost
-    - 财务 + 文本情绪 → Wide&Deep（wide 记忆规则 + deep 泛化）
+  - **本项目中实际实现的模型**：
+    - Baseline：只用 FDIC 财务特征的 Logistic Regression（见 `code/presentation_experiment.py`）
+    - AuroraBid 借鉴版（简化）：财务 + 文本情绪 → Logistic Regression 预测 \(p(bad\_year_{s,t+1}=1\mid x_{s,t})\)
+  - **后续扩展方向（本课程中未实现、可在论文 Discussion 中提到）**：
+    - Wide&Deep：在现有特征上叠加一个浅层 MLP，将线性 wide 部分（FDIC 指标）与非线性 deep 部分（高维文本特征）结合
 
-- **Stage 2（CVR / Deep-only 思路）**：在 `bad_year=1` 的州–期上预测恶化强度 `severity`
+- **Stage 2（CVR）**：在 `bad_year=1` 的州–期上预测恶化强度 `severity`
   - 输出：
 
 $$
@@ -97,9 +99,11 @@ $$
 
 - **预算约束**：监管者在每个报告期 \(t\) 只能对 \(K\) 个州（或州内若干重点银行）投入“额外监管注意力”（现场检查、压力测试、深度监控）。
 
-- **策略对比（适合写进 final project）**
-  - Rule-based：按传统 FDIC 财务指标（例如上一期 \(\Delta ROA\) 最差、亏损州）选 top-\(K\)
-  - Supervised score：按 `StressScore_{s,t}` 选 top-\(K\)（对应 AuroraBid 的 eCPM 类）
+- **本项目实现的监督式策略对比**
+  - Rule-based：按传统 FDIC 财务指标（例如上一期 \(\Delta ROA\) 最差、亏损程度最大州）选 top-\(K\)
+  - Supervised score：按 `StressScore_{s,t}` 选 top-\(K\)（对应 AuroraBid 的 eCPM 类）。我们在 `outputs/presentation_metrics.csv` 中比较了 FDIC-only 与 FDIC+Sentiment 特征集合在 AUC / \(R^2\) 上的差异，作为哪种打分更好的证据。
+
+- **可扩展的在线策略（未在本课程代码中实现）**
   - LinUCB：把州–期的文本+财务特征作为上下文，用 contextual bandit 在线学习“选择哪些州进行重点监测”，奖励可以设置为：
     - 若后一期 \(bad\_year_{s,t+1}=1\) 或 `severity_{s,t+1}` 较大 → 奖励高
     - 否则奖励低

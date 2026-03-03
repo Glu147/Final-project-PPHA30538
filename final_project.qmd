@@ -22,9 +22,32 @@ This project asks:
 
 ## Data
 
-- News/regulatory text: `raw_partner_headlines.csv` (filtered to regulatory keywords; scored with a lightweight sentiment model)
-- Banking fundamentals: FDIC state-year aggregates (e.g., `Summary_data_states.csv`)
-- Geography: US state boundaries (Census shapefile; used for choropleth map)
+- **News/regulatory text**: `raw_partner_headlines.csv`  
+  - Source: Benzinga + other news partners (Kaggle)  
+  - We train a lightweight **TF–IDF + logistic regression** classifier on `all-data.csv` (labeled positive/negative/neutral sentences), then apply it to headlines that contain regulatory keywords (e.g., `FDIC`, `regulation`, `stress test`, `bank run`).  
+  - We aggregate sentiment at the **US-year** level:
+    - `sent_mean_t`: average (positive − negative) probability for year \(t\)
+    - `sent_neg_share_t`: average negative probability for year \(t\)
+    - `news_count_t`: number of regulatory headlines in year \(t\)
+
+- **Banking fundamentals (FDIC)**: `Summary_data_states.csv`  
+  - State-year aggregates for **commercial banks – financial** from FDIC.  
+  - Key fields we use:
+    - `ASSET_{s,t}`: total assets
+    - `NETINC_{s,t}`: net income
+    - `BANKS_{s,t}`: number of banks
+    - `NIM_{s,t}`: net interest margin
+  - Derived fundamentals:
+    \[
+    ROA_{s,t} = \frac{NETINC_{s,t}}{ASSET_{s,t}},\quad
+    \Delta ROA_{s,t} = ROA_{s,t} - ROA_{s,t-1}
+    \]
+  - Labels:
+    - \(bad\_year_{s,t} = 1\) if \(\Delta ROA_{s,t} < q_{0.2}(\Delta ROA_s)\), otherwise 0  
+    - \(severity_{s,t} = -\min(\Delta ROA_{s,t}, 0)\)
+
+- **Geography**: US state boundaries (Census shapefile `cb_2024_us_state_20m.zip`)  
+  - Joined to FDIC panel by state name (`STNAME` / `NAME`) for spatial plots.
 
 ### Folder conventions
 
@@ -41,21 +64,85 @@ python preprocessing.py
 
 This script writes:
 
-- `data/derived-data/state_year_panel.csv` and `.parquet`
-- `outputs/static_scatter_sent_vs_droa.png`
-- `outputs/static_map_stressscore.png` (if geopandas map build succeeds)
+- `data/derived-data/state_year_panel.csv` and `.parquet`  
+  *(state–year panel with FDIC fundamentals, sentiment indices, labels, and model-based stress scores)*  
+- `outputs/static_scatter_sent_vs_droa.png`  
+  *(Static Plot 1)*  
+- `outputs/static_map_stressscore.png` (if geopandas map build succeeds)  
+  *(Static Plot 2)*
 
 ## Results
 
+We focus on 2014–2020, the period where we have both FDIC data and enough labeled regulatory headlines to construct a sentiment index.
+
 ### Static Plot 1: Sentiment vs ΔROA scatter
 
-*(to be implemented)*
+```{r}
+knitr::include_graphics("outputs/static_scatter_sent_vs_droa.png")
+```
 
-### Static Plot 2 (Spatial): US map of stress indicators
+**Interpretation**:
 
-*(to be implemented)*
+- Each point is a state–year pair \((s,t)\) between 2014 and 2020.  
+- Horizontal axis: yearly average **negative probability** from the news sentiment model (`sent_neg_share`).  
+- Vertical axis: change in ROA, \(\Delta ROA_{s,t}\).  
+- Color (in the Streamlit version) distinguishes `bad_year` vs non‑bad years.
+
+We see that years with high negative regulatory-news tone tend to be associated with **lower or more negative ΔROA**, although the relationship is noisy. This supports Q1 qualitatively: regulatory‑news sentiment contains information about subsequent deterioration in state‑level banking fundamentals.
+
+### Static Plot 2 (Spatial): US map of StressScore
+
+```{r}
+knitr::include_graphics("outputs/static_map_stressscore.png")
+```
+
+**Construction**:
+
+- For each state–year we fit simple baseline models:
+  - Classification: \(P(bad\_year_{s,t+1}=1 \mid x_{s,t})\) using logistic regression
+  - Regression: \(\hat{severity}_{s,t+1}\) using ridge regression
+  - Features \(x_{s,t}\): lagged FDIC fundamentals + sentiment indices (`sent_mean`, `sent_neg_share`, `news_count`)
+- We define
+  \[
+  StressScore_{s,t} = P(bad\_year_{s,t+1}=1 \mid x_{s,t}) \times \hat{severity}_{s,t+1}
+  \]
+
+**Interpretation**:
+
+- The map shows `StressScore_{s,t}` for the latest year with both FDIC and sentiment data (2020).  
+- Darker colors correspond to **higher predicted stress** (higher probability of a bad year times its predicted severity).  
+- We observe some clustering of high‑stress states in specific regions, consistent with Q3’s hypothesis of geographic concentration.
+
+### Predictive performance: FDIC‑only vs FDIC + sentiment
+
+We quantify Q1/Q2 using a simple **time‑split experiment**:
+
+- Train on 2014–2019, test on 2020.  
+- Two feature sets:
+  - FDIC‑only: lagged ROA, ΔROA, NIM, growth in assets/deposits/bank counts
+  - FDIC + Sentiment: FDIC‑only features plus `sent_mean`, `sent_neg_share`, `news_count`
+
+We run `code/presentation_experiment.py`, which writes `outputs/presentation_metrics.csv`. The table below shows the resulting AUC for predicting `bad_year` and \(R^2\) for `severity`:
+
+```{r}
+metrics <- read.csv("outputs/presentation_metrics.csv")
+knitr::kable(metrics, digits = 3)
+```
+
+At this early stage, adding sentiment **does not yet dominate** the FDIC‑only baseline in out‑of‑sample metrics (AUC and \(R^2\) are of similar magnitude, with small differences). This is not surprising given that our current sentiment index is national rather than state‑specific, and we only have seven years with usable sentiment. In the final paper we discuss this as a limitation and a direction for improvement (richer text models and better mapping from banks to states).
 
 ## Streamlit App
 
 The Streamlit app lives in `streamlit-app/`. See `README.md` for how to run it locally.
+
+The app:
+
+- Reads `data/derived-data/state_year_panel.csv`
+- Offers a **year slider** and **metric selector** (e.g. `StressScore`, `p_bad_year`, `DROA`, `sent_neg_share`)
+- Shows:
+  - An interactive scatter plot of sentiment vs ΔROA (state–year)
+  - A time series of sentiment indices
+  - A choropleth map of the selected metric by state
+
+This satisfies the course requirement of **one Streamlit app with at least one interactive/spatial visualization** and lets us communicate Q1–Q3 in a more intuitive way during the presentation.
 
