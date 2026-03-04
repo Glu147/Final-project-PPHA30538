@@ -6,13 +6,7 @@ import altair as alt
 import geopandas as gpd
 import pandas as pd
 import streamlit as st
-import os
-import subprocess
 
-DATA_PATH = "data/derived-data/state_year_panel.csv"
-
-if not os.path.exists(DATA_PATH):
-    subprocess.run(["python", "preprocessing.py"])
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DERIVED = REPO_ROOT / "data" / "derived-data"
