@@ -134,11 +134,13 @@ if "StressScore" in df.columns:
     )
 else:
     years_with_stress = []
-default_year = max(years_with_stress) if years_with_stress else max(years)
+default_year = int(max(years_with_stress)) if years_with_stress else int(max(years))
+min_year = int(min(years))
+max_year = int(max(years))
 
 with st.sidebar:
     st.header("Controls")
-    year = st.slider("Year", min_value=min(years), max_value=max(years), value=default_year, step=1)
+    year = st.slider("Year", min_value=min_year, max_value=max_year, value=default_year, step=1)
     available_metrics = [
         c
         for c in ["StressScore", "p_bad_year", "sev_hat", "DROA", "ROA", "sent_neg_share", "news_count"]
