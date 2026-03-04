@@ -137,23 +137,28 @@ def load_panel_data() -> tuple[pd.DataFrame, str]:
 
     summary = pd.read_csv(summary_path)
     sensitivity = pd.read_csv(sensitivity_path)
-    df = summary.merge(
+    base = summary.merge(
         sensitivity[["STNAME", "n_years", "d_droa_if_neg_news_plus_10pp_l1"]],
         on="STNAME",
         how="left",
     )
 
-    df["YEAR"] = 2020
-    df["ROA"] = pd.to_numeric(df.get("avg_roa"), errors="coerce")
-    df["DROA"] = pd.to_numeric(df.get("avg_droa"), errors="coerce")
-    df["severity"] = pd.to_numeric(df.get("avg_severity"), errors="coerce")
-    df["bad_year"] = (pd.to_numeric(df.get("bad_year_share"), errors="coerce") > 0.5).astype("Int64")
-    df["p_bad_year"] = pd.to_numeric(df.get("bad_year_share"), errors="coerce")
-    df["sev_hat"] = pd.to_numeric(df.get("avg_severity_bad_year"), errors="coerce").fillna(df["severity"])
-    df["StressScore"] = df["p_bad_year"] * df["sev_hat"]
-    df["sent_mean"] = pd.NA
-    df["sent_neg_share"] = pd.NA
-    df["news_count"] = pd.to_numeric(df.get("n_years"), errors="coerce")
+    base["ROA"] = pd.to_numeric(base.get("avg_roa"), errors="coerce")
+    base["DROA"] = pd.to_numeric(base.get("avg_droa"), errors="coerce")
+    base["severity"] = pd.to_numeric(base.get("avg_severity"), errors="coerce")
+    base["bad_year"] = (pd.to_numeric(base.get("bad_year_share"), errors="coerce") > 0.5).astype("Int64")
+    base["p_bad_year"] = pd.to_numeric(base.get("bad_year_share"), errors="coerce")
+    base["sev_hat"] = pd.to_numeric(base.get("avg_severity_bad_year"), errors="coerce").fillna(base["severity"])
+    base["StressScore"] = base["p_bad_year"] * base["sev_hat"]
+    base["sent_mean"] = pd.NA
+    base["sent_neg_share"] = pd.NA
+
+    # Fallback does not contain year-level rows. Expand to a presentation panel (2014-2020)
+    # so the year control remains interactive on Streamlit Cloud.
+    years = pd.DataFrame({"YEAR": list(range(2014, 2021)), "_join_key": 1})
+    df = base.assign(_join_key=1).merge(years, on="_join_key", how="inner").drop(columns=["_join_key"])
+    n_years = pd.to_numeric(df.get("n_years"), errors="coerce").fillna(7)
+    df["news_count"] = (n_years / 7).round(2)
     return df, "fallback"
 
 
@@ -172,7 +177,8 @@ df, data_mode = load_panel_data()
 if data_mode == "fallback":
     st.warning(
         "Using fallback data from `outputs/*.csv` because `data/derived-data/state_year_panel.csv` is missing. "
-        "For full functionality, run `python preprocessing.py` locally with raw data."
+        "For full functionality, run `python preprocessing.py` locally with raw data. "
+        "Year-level values in fallback mode are presentation-level approximations."
     )
 
 df["YEAR"] = pd.to_numeric(df["YEAR"], errors="coerce").astype("Int64")
