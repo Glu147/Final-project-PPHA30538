@@ -67,6 +67,60 @@ STATE_TO_ABBR = {
     "Wyoming": "WY",
 }
 
+STATE_TO_FIPS = {
+    "Alabama": 1,
+    "Alaska": 2,
+    "Arizona": 4,
+    "Arkansas": 5,
+    "California": 6,
+    "Colorado": 8,
+    "Connecticut": 9,
+    "Delaware": 10,
+    "District Of Columbia": 11,
+    "Florida": 12,
+    "Georgia": 13,
+    "Hawaii": 15,
+    "Idaho": 16,
+    "Illinois": 17,
+    "Indiana": 18,
+    "Iowa": 19,
+    "Kansas": 20,
+    "Kentucky": 21,
+    "Louisiana": 22,
+    "Maine": 23,
+    "Maryland": 24,
+    "Massachusetts": 25,
+    "Michigan": 26,
+    "Minnesota": 27,
+    "Mississippi": 28,
+    "Missouri": 29,
+    "Montana": 30,
+    "Nebraska": 31,
+    "Nevada": 32,
+    "New Hampshire": 33,
+    "New Jersey": 34,
+    "New Mexico": 35,
+    "New York": 36,
+    "North Carolina": 37,
+    "North Dakota": 38,
+    "Ohio": 39,
+    "Oklahoma": 40,
+    "Oregon": 41,
+    "Pennsylvania": 42,
+    "Rhode Island": 44,
+    "South Carolina": 45,
+    "South Dakota": 46,
+    "Tennessee": 47,
+    "Texas": 48,
+    "Utah": 49,
+    "Vermont": 50,
+    "Virginia": 51,
+    "Washington": 53,
+    "West Virginia": 54,
+    "Wisconsin": 55,
+    "Wyoming": 56,
+}
+
 
 def load_panel_data() -> tuple[pd.DataFrame, str]:
     panel_path = DERIVED / "state_year_panel.csv"
@@ -166,7 +220,24 @@ with col1:
     plot_df = plot_df[plot_df["YEAR"].between(year - 5, year)]
 
     if plot_df.empty:
-        st.info("No sentiment/ΔROA data available for plotting.")
+        fallback_scatter_df = df.dropna(subset=["ROA", "DROA", "YEAR"]).copy()
+        fallback_scatter_df = fallback_scatter_df[fallback_scatter_df["YEAR"].between(year - 5, year)]
+        if fallback_scatter_df.empty:
+            st.info("No ROA/ΔROA data available for plotting.")
+        else:
+            st.caption("Sentiment columns are unavailable. Showing fallback ROA vs ΔROA view.")
+            fallback_chart = (
+                alt.Chart(fallback_scatter_df)
+                .mark_circle(size=55, opacity=0.4)
+                .encode(
+                    x=alt.X("ROA:Q", title="ROA"),
+                    y=alt.Y("DROA:Q", title="ΔROA"),
+                    color=alt.Color("bad_year:N", title="bad_year"),
+                    tooltip=["STNAME:N", "YEAR:Q", "ROA:Q", "DROA:Q", "StressScore:Q"],
+                )
+                .properties(height=360)
+            )
+            st.altair_chart(fallback_chart, use_container_width=True)
     else:
         chart = (
             alt.Chart(plot_df)
@@ -188,21 +259,46 @@ with col2:
     sent = sent[sent["YEAR"].between(year - 10, year)]
 
     if sent.empty:
-        st.info("No sentiment index available.")
+        st.info("No yearly index available in current dataset.")
     else:
-        sent_melt = sent.melt(id_vars=["YEAR"], value_vars=["sent_mean", "sent_neg_share"], var_name="metric", value_name="value")
-        chart2 = (
-            alt.Chart(sent_melt)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("YEAR:Q", title="Year"),
-                y=alt.Y("value:Q", title="Value"),
-                color=alt.Color("metric:N", title="Sentiment metric"),
-                tooltip=["YEAR:Q", "metric:N", "value:Q"],
+        sent_metrics = [c for c in ["sent_mean", "sent_neg_share"] if c in sent.columns]
+        sent_melt = sent.melt(id_vars=["YEAR"], value_vars=sent_metrics, var_name="metric", value_name="value")
+        sent_melt = sent_melt.dropna(subset=["value"])
+        if sent_melt.empty:
+            st.caption("Sentiment index is unavailable. Showing fallback yearly stress trend.")
+            stress_ts = (
+                df.dropna(subset=["YEAR", "StressScore"])
+                .groupby("YEAR", as_index=False)["StressScore"]
+                .mean()
+                .sort_values("YEAR")
             )
-            .properties(height=360)
-        )
-        st.altair_chart(chart2, use_container_width=True)
+            if stress_ts.empty:
+                st.info("No yearly trend available.")
+            else:
+                chart2_fb = (
+                    alt.Chart(stress_ts)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X("YEAR:Q", title="Year"),
+                        y=alt.Y("StressScore:Q", title="Average StressScore"),
+                        tooltip=["YEAR:Q", "StressScore:Q"],
+                    )
+                    .properties(height=360)
+                )
+                st.altair_chart(chart2_fb, use_container_width=True)
+        else:
+            chart2 = (
+                alt.Chart(sent_melt)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("YEAR:Q", title="Year"),
+                    y=alt.Y("value:Q", title="Value"),
+                    color=alt.Color("metric:N", title="Sentiment metric"),
+                    tooltip=["YEAR:Q", "metric:N", "value:Q"],
+                )
+                .properties(height=360)
+            )
+            st.altair_chart(chart2, use_container_width=True)
 
 st.subheader("Geographic stress map")
 shp_zip = RAW / "C" / "shapefile" / "cb_2024_us_all_20m" / "cb_2024_us_state_20m.zip"
@@ -229,22 +325,43 @@ if shp_zip.exists():
     ax.set_title(f"{value_col} — {year}")
     st.pyplot(fig, clear_figure=True)
 else:
-    st.info(
-        "State shapefile is missing. Showing a fallback ranking chart instead. "
-        "Add `data/raw-data/C/shapefile/cb_2024_us_all_20m/cb_2024_us_state_20m.zip` for the full map."
-    )
-    map_df["abbr"] = map_df["STNAME"].map(STATE_TO_ABBR)
-    fallback_plot = (
-        alt.Chart(map_df.sort_values(value_col, ascending=False).head(20))
-        .mark_bar()
-        .encode(
-            x=alt.X(f"{value_col}:Q", title=value_col),
-            y=alt.Y("abbr:N", sort="-x", title="State"),
-            tooltip=["STNAME:N", "abbr:N", f"{value_col}:Q"],
+    map_df["fips"] = pd.to_numeric(map_df["STNAME"].map(STATE_TO_FIPS), errors="coerce")
+    map_df = map_df.dropna(subset=["fips"]).copy()
+    map_df["fips"] = map_df["fips"].astype(int)
+
+    if not map_df.empty:
+        us_states = alt.topo_feature(
+            "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json",
+            "states",
         )
-        .properties(height=420)
-    )
-    st.altair_chart(fallback_plot, use_container_width=True)
+        geo_chart = (
+            alt.Chart(us_states)
+            .mark_geoshape(stroke="white", strokeWidth=0.5)
+            .encode(
+                color=alt.Color(f"{value_col}:Q", title=value_col, scale=alt.Scale(scheme="orangered")),
+                tooltip=["STNAME:N", f"{value_col}:Q"],
+            )
+            .transform_lookup(
+                lookup="id",
+                from_=alt.LookupData(map_df, "fips", ["STNAME", value_col]),
+            )
+            .project(type="albersUsa")
+            .properties(height=420)
+        )
+        st.altair_chart(geo_chart, use_container_width=True)
+    else:
+        map_df["abbr"] = map_df["STNAME"].map(STATE_TO_ABBR)
+        fallback_plot = (
+            alt.Chart(map_df.sort_values(value_col, ascending=False).head(20))
+            .mark_bar()
+            .encode(
+                x=alt.X(f"{value_col}:Q", title=value_col),
+                y=alt.Y("abbr:N", sort="-x", title="State"),
+                tooltip=["STNAME:N", "abbr:N", f"{value_col}:Q"],
+            )
+            .properties(height=420)
+        )
+        st.altair_chart(fallback_plot, use_container_width=True)
 
 with st.expander("Show state-year table (selected year)"):
     show_cols = ["STNAME", "YEAR", "ROA", "DROA", "bad_year", "severity", "p_bad_year", "sev_hat", "StressScore", "sent_mean", "sent_neg_share", "news_count"]
