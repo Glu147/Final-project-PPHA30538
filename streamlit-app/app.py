@@ -140,7 +140,11 @@ max_year = int(max(years))
 
 with st.sidebar:
     st.header("Controls")
-    year = st.slider("Year", min_value=min_year, max_value=max_year, value=default_year, step=1)
+    if min_year == max_year:
+        year = min_year
+        st.caption(f"Year fixed at {year} (only one year available in current dataset).")
+    else:
+        year = st.slider("Year", min_value=min_year, max_value=max_year, value=default_year, step=1)
     available_metrics = [
         c
         for c in ["StressScore", "p_bad_year", "sev_hat", "DROA", "ROA", "sent_neg_share", "news_count"]
