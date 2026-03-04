@@ -4,7 +4,7 @@
 
 ### **Group Members**
 
-hsy  jiayuzhao  yichenliu
+SongyiHuang  JiayuZhao  YichenLiu
 
 ### **Motivating Research Question**
 
@@ -21,8 +21,6 @@ This project asks:
 
 
 By answering these questions, the project explores how AI-based text analysis could support **financial stability monitoring and regulatory decision-making**, making it directly relevant to public policy.
-
-
 
 ### **Potential Datasets**
 
@@ -43,7 +41,7 @@ By answering these questions, the project explores how AI-based text analysis co
 
 
 
-#### **Dataset 3 — Geographic Data for Banks (Spatial Requirement)**
+#### **Dataset 3 — Geographic Data for Banks **
 
 - **Source:** FDIC bank headquarters database or SEC company location data; U.S. Census shapefiles for mapping
 - **Content:** Geographic locations (state or county) of bank headquarters
@@ -63,15 +61,9 @@ A dual-axis line chart showing the stock price (or volatility) of a representati
 
 #### **2. Scatter Plot of Sentiment Disagreement vs. Market Volatility (Altair)**
 
-
-
 Each point represents a trading day. The x-axis measures the dispersion or disagreement in daily news sentiment, and the y-axis measures market volatility (e.g., rolling standard deviation or True Range).
 
 **Purpose:** To explore whether “confusing” or conflicting news environments are associated with higher financial instability.
-
-
-
-
 
 #### 3. Spatial Map of Regional Financial Stress (Geopandas)
 
@@ -96,9 +88,7 @@ We will build an interactive dashboard titled:
 > **“Financial News Sentiment & Market Stress Monitor”**
 
 
-
 The app will allow users to explore how financial news sentiment and stock market volatility evolve over time and across regions.
-
 
 
 Key interactive features will include:
@@ -114,8 +104,6 @@ This application will make our analysis more accessible and demonstrate how AI-d
 
 
 # **Streamlit **Wireframe
-
-
 
 **Financial News Sentiment & Market Stress Monitor**
 
