@@ -10,8 +10,6 @@ SongyiHuang  JiayuZhao  YichenLiu
 
 Financial regulators such as the SEC, FDIC, and the Federal Reserve closely monitor market stability, yet it remains difficult to measure how quickly and intensely financial markets react to regulatory announcements and news events.
 
-
-
 This project asks:
 
 1. **Can sentiment scores derived from Large Language Models (LLMs) applied to financial news predict short-term volatility in regional bank stocks?**
