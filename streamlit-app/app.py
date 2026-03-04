@@ -157,7 +157,11 @@ def load_panel_data() -> tuple[pd.DataFrame, str]:
     # so the year control remains interactive on Streamlit Cloud.
     years = pd.DataFrame({"YEAR": list(range(2014, 2021)), "_join_key": 1})
     df = base.assign(_join_key=1).merge(years, on="_join_key", how="inner").drop(columns=["_join_key"])
-    n_years = pd.to_numeric(df.get("n_years"), errors="coerce").fillna(7)
+    n_years_col = next((c for c in ["n_years", "n_years_x", "n_years_y"] if c in df.columns), None)
+    if n_years_col is None:
+        n_years = pd.Series(7.0, index=df.index)
+    else:
+        n_years = pd.to_numeric(df[n_years_col], errors="coerce").fillna(7)
     df["news_count"] = (n_years / 7).round(2)
     return df, "fallback"
 
