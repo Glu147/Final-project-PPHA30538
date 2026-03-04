@@ -1,7 +1,5 @@
 **Can LLMs Quantify Market Reactions to Financial News and Regulation? Evidence from Regional Bank Volatility**
 
-
-
 ### **Group Members**
 
 SongyiHuang  JiayuZhao  YichenLiu

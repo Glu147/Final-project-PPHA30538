@@ -10,4 +10,4 @@ shapely
 pyproj
 matplotlib
 streamlit
-
+altair
