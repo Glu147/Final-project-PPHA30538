@@ -11,7 +11,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-
 REPO_ROOT = Path(__file__).resolve().parent
 RAW_DIR = REPO_ROOT / "data" / "raw-data"
 DERIVED_DIR = REPO_ROOT / "data" / "derived-data"
